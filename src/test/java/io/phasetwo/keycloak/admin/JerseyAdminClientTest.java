@@ -1,47 +1,9 @@
-package io.phasetwo.service;
+package io.phasetwo.keycloak.admin;
 
-import static io.phasetwo.service.Helpers.enableEvents;
-import static io.phasetwo.service.Helpers.objectMapper;
-import static io.phasetwo.service.Helpers.toJsonString;
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import dasniko.testcontainers.keycloak.KeycloakContainer;
-import io.phasetwo.client.openapi.model.OrganizationRepresentation;
-import io.phasetwo.client.openapi.model.OrganizationRoleRepresentation;
-import io.phasetwo.service.importexport.representation.InvitationRepresentation;
-import io.phasetwo.service.importexport.representation.KeycloakOrgsRepresentation;
-import io.phasetwo.service.importexport.representation.UserRolesRepresentation;
-import io.phasetwo.service.representation.Invitation;
-import io.phasetwo.service.representation.OrganizationRole;
-import io.phasetwo.service.resource.OrganizationResourceProviderFactory;
-import io.restassured.response.Response;
-import io.restassured.specification.RequestSpecification;
 import jakarta.ws.rs.core.Response.Status;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
-import org.hamcrest.CoreMatchers;
-import org.hamcrest.Matchers;
-import org.jboss.resteasy.client.jaxrs.ResteasyClient;
-import org.jboss.resteasy.client.jaxrs.internal.ResteasyClientBuilderImpl;
-import org.jboss.shrinkwrap.resolver.api.maven.Maven;
 import org.junit.jupiter.api.BeforeAll;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.RealmResource;
@@ -51,51 +13,21 @@ import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.testcontainers.Testcontainers;
 
-public abstract class AbstractOrganizationTest {
+public class JerseyAdminClientTest {
 
   public static final String KEYCLOAK_IMAGE =
       String.format(
-          "quay.io/phasetwo/keycloak-crdb:%s", System.getProperty("keycloak-version", "26.0.2"));
+          "quay.io/keycloak/keycloak:%s", System.getProperty("keycloak-version", "26.2.4"));
   public static final String REALM = "master";
   public static final String ADMIN_CLI = "admin-cli";
 
-  static final String[] deps = {
-    "dnsjava:dnsjava",
-    "org.wildfly.client:wildfly-client-config",
-    "org.jboss.resteasy:resteasy-client",
-    "org.jboss.resteasy:resteasy-client-api",
-    "org.keycloak:keycloak-admin-client",
-    "io.phasetwo.keycloak:keycloak-events"
-  };
-
-  static List<File> getDeps() {
-    List<File> dependencies = new ArrayList<File>();
-    for (String dep : deps) {
-      dependencies.addAll(getDep(dep));
-    }
-    return dependencies;
-  }
-
-  static List<File> getDep(String pkg) {
-    return Maven.resolver()
-        .loadPomFromFile("./pom.xml")
-        .resolve(pkg)
-        .withoutTransitivity()
-        .asList(File.class);
-  }
-
   public static Keycloak keycloak;
-  public static ResteasyClient resteasyClient;
 
   public static final KeycloakContainer container =
       new KeycloakContainer(KEYCLOAK_IMAGE)
           .withContextPath("/auth")
           .withReuse(true)
-          .withProviderClassesFrom("target/classes")
-          .withProviderLibsFrom(getDeps())
           .withAccessToHost(true);
-
-  protected static final int WEBHOOK_SERVER_PORT = 8083;
 
   static {
     container.start();
