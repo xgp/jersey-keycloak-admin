@@ -3,17 +3,14 @@ package io.phasetwo.keycloak.admin;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import dasniko.testcontainers.keycloak.KeycloakContainer;
-import jakarta.ws.rs.core.Response.Status;
-import org.junit.jupiter.api.BeforeAll;
-import org.keycloak.admin.client.Keycloak;
-import org.keycloak.admin.client.resource.RealmResource;
-import org.keycloak.protocol.oidc.OIDCLoginProtocol;
-import org.keycloak.representations.idm.ClientRepresentation;
-import org.keycloak.representations.idm.RealmRepresentation;
-import org.keycloak.representations.idm.UserRepresentation;
-import org.testcontainers.Testcontainers;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.KeycloakBuilder;
+import org.keycloak.representations.idm.UserRepresentation;
 
 public class JerseyAdminClientTest {
 
@@ -24,8 +21,7 @@ public class JerseyAdminClientTest {
   public static final String ADMIN_CLI = "admin-cli";
 
   public static Keycloak keycloak;
-  public static Client resteasyClient;
-  
+
   public static final KeycloakContainer container =
       new KeycloakContainer(KEYCLOAK_IMAGE)
           .withContextPath("/auth")
@@ -38,24 +34,25 @@ public class JerseyAdminClientTest {
 
   @BeforeAll
   public static void beforeAll() {
-    resteasyClient =
-        ClientBuilder.newBuilder()
-        .readTimeout(60, TimeUnit.SECONDS)
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .build();
     keycloak =
         getKeycloak(REALM, ADMIN_CLI, container.getAdminUsername(), container.getAdminPassword());
   }
 
   public static Keycloak getKeycloak(String realm, String clientId, String user, String pass) {
+    Client jerseyClient =
+        ClientBuilder.newBuilder()
+            .readTimeout(60, TimeUnit.SECONDS)
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .build();
+    System.err.println(jerseyClient.getClass().getName());
     return KeycloakBuilder.builder()
         .serverUrl(getAuthUrl())
         .realm(realm)
         .username(user)
         .password(pass)
         .clientId(clientId)
-        .resteasyClient(resteasyClient)
-        .build()
+        .resteasyClient(jerseyClient)
+        .build();
   }
 
   public static String getAuthUrl() {
